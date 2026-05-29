@@ -9,6 +9,10 @@ import TransactionList from './components/TransactionList'
 import BudgetTracker from './components/BudgetTracker'
 import GrafikPage from './components/GrafikPage'
 import RekapBulanan from './components/RekapBulanan'
+import SavingsGoal from './components/SavingsGoal'
+import HutangPiutang from './components/HutangPiutang'
+import TransaksiRutin from './components/TransaksiRutin'
+import Insight from './components/Insight'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -30,6 +34,10 @@ export default function App() {
     budget: <BudgetTracker transactions={transactions} userId={user.uid} />,
     grafik: <GrafikPage transactions={transactions} />,
     rekap: <RekapBulanan transactions={transactions} />,
+    tabungan: <SavingsGoal userId={user.uid} transactions={transactions} />,
+    hutang: <HutangPiutang userId={user.uid} />,
+    rutin: <TransaksiRutin userId={user.uid} addTransaction={addTransaction} />,
+    insight: <Insight transactions={transactions} />,
   }
 
   return (

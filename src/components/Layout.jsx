@@ -6,13 +6,17 @@ export default function Layout({ children, activePage, setActivePage }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'transaksi', label: 'Transaksi', icon: '💸' },
-    { id: 'riwayat', label: 'Riwayat', icon: '📋' },
-    { id: 'budget', label: 'Budget', icon: '🎯' },
-    { id: 'grafik', label: 'Grafik', icon: '📈' },
-    { id: 'rekap', label: 'Rekap', icon: '🗓️' },
-  ]
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'transaksi', label: 'Transaksi', icon: '💸' },
+  { id: 'riwayat', label: 'Riwayat', icon: '📋' },
+  { id: 'budget', label: 'Budget', icon: '🎯' },
+  { id: 'grafik', label: 'Grafik', icon: '📈' },
+  { id: 'rekap', label: 'Rekap', icon: '🗓️' },
+  { id: 'tabungan', label: 'Tabungan', icon: '🏦' },
+  { id: 'hutang', label: 'Hutang', icon: '🤝' },
+  { id: 'rutin', label: 'Rutin', icon: '🔄' },
+  { id: 'insight', label: 'Insight', icon: '💡' },
+]
 
   return (
     <div className="min-h-screen bg-gray-50">
