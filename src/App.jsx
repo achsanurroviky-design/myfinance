@@ -27,8 +27,7 @@ export default function App() {
 
   if (!user) return <Login />
 
-  const pages = {
-    dashboard: <Dashboard transactions={transactions} setActivePage={setActivePage} />,
+  const pages = {dashboard: <Dashboard transactions={transactions} setActivePage={setActivePage} userId={user.uid} />,
     transaksi: <TransactionForm addTransaction={addTransaction} />,
     riwayat: <TransactionList transactions={transactions} deleteTransaction={deleteTransaction} />,
     budget: <BudgetTracker transactions={transactions} userId={user.uid} />,
