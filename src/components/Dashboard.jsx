@@ -1,5 +1,13 @@
 import { useMemo } from 'react'
 
+const s = {
+  card: { background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 12, padding: '14px 16px' },
+  label: { fontSize: 11, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 },
+  page: { color: '#C0C8D8' },
+  sub: { fontSize: 13, color: '#3D5A80', marginTop: 2 },
+  section: { background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: '16px' },
+}
+
 export default function Dashboard({ transactions, setActivePage }) {
   const stats = useMemo(() => {
     const now = new Date()
@@ -13,62 +21,62 @@ export default function Dashboard({ transactions, setActivePage }) {
   }, [transactions])
 
   const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
-
   const recent = transactions.slice(0, 5)
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
-        <p className="text-gray-500 text-sm">Ringkasan keuangan bulan ini</p>
+        <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 2, marginBottom: 2 }}>OVERVIEW</div>
+        <h2 style={{ fontSize: 20, fontWeight: 500, color: '#C0C8D8', margin: 0 }}>Dashboard</h2>
+        <p style={{ fontSize: 12, color: '#3D5A80', margin: '2px 0 0' }}>Ringkasan keuangan bulan ini</p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
         {[
-          { label: 'Saldo', value: stats.balance, color: stats.balance >= 0 ? 'text-blue-600' : 'text-red-500', bg: 'bg-blue-50' },
-          { label: 'Pemasukan', value: stats.income, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Pengeluaran', value: stats.outcome, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: 'Transaksi', value: stats.total, color: 'text-purple-600', bg: 'bg-purple-50', isCount: true },
-        ].map(s => (
-          <div key={s.label} className={`${s.bg} rounded-2xl p-4`}>
-            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-            <p className={`font-bold text-sm md:text-base ${s.color}`}>
-              {s.isCount ? s.value : fmt(s.value)}
-            </p>
+          { label: 'SALDO', value: fmt(stats.balance), color: stats.balance >= 0 ? '#6EE7B7' : '#F87171' },
+          { label: 'PEMASUKAN', value: fmt(stats.income), color: '#4ADE80' },
+          { label: 'PENGELUARAN', value: fmt(stats.outcome), color: '#F87171' },
+          { label: 'TRANSAKSI', value: stats.total, color: '#93C5FD', isCount: true },
+        ].map(s2 => (
+          <div key={s2.label} style={s.card}>
+            <div style={s.label}>{s2.label}</div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: s2.color }}>{s2.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Transaksi terbaru */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-800">Transaksi terbaru</h3>
-          <button onClick={() => setActivePage('riwayat')} className="text-blue-500 text-sm hover:underline">
-            Lihat semua
+      {/* Recent transactions */}
+      <div style={s.section}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: '#C0C8D8', letterSpacing: 0.5 }}>TRANSAKSI TERBARU</div>
+          <button onClick={() => setActivePage('riwayat')} style={{ fontSize: 11, color: '#3D5A80', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Lihat semua →
           </button>
         </div>
         {recent.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            <div className="text-4xl mb-2">📭</div>
-            <p className="text-sm">Belum ada transaksi</p>
+          <div style={{ textAlign: 'center', padding: '32px 0', color: '#3D5A80' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
+            <div style={{ fontSize: 12 }}>Belum ada transaksi</div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {recent.map(t => (
-              <div key={t.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm ${t.type === 'income' ? 'bg-green-50' : 'bg-red-50'}`}>
-                    {t.type === 'income' ? '⬆️' : '⬇️'}
+              <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#0F2040', borderRadius: 10, border: '0.5px solid #1A3050' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: t.type === 'income' ? '#052814' : '#280505', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                    {t.type === 'income' ? '↑' : '↓'}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">{t.category}</p>
-                    <p className="text-xs text-gray-400">{t.note || '-'}</p>
+                    <div style={{ fontSize: 13, color: '#C0C8D8', fontWeight: 500 }}>{t.category}</div>
+                    <div style={{ fontSize: 11, color: '#3D5A80' }}>{t.note || '—'}</div>
                   </div>
                 </div>
-                <p className={`text-sm font-semibold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: t.type === 'income' ? '#4ADE80' : '#F87171' }}>
                   {t.type === 'income' ? '+' : '-'}{fmt(t.amount)}
-                </p>
+                </div>
               </div>
             ))}
           </div>
@@ -76,11 +84,11 @@ export default function Dashboard({ transactions, setActivePage }) {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => setActivePage('transaksi')} className="bg-blue-500 text-white rounded-2xl p-4 text-sm font-medium hover:bg-blue-600 transition-colors">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <button onClick={() => setActivePage('transaksi')} style={{ background: '#C0C8D8', color: '#0A1628', border: 'none', borderRadius: 12, padding: '14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', letterSpacing: 0.5 }}>
           + Tambah Transaksi
         </button>
-        <button onClick={() => setActivePage('grafik')} className="bg-white border border-gray-100 text-gray-700 rounded-2xl p-4 text-sm font-medium hover:bg-gray-50 transition-colors">
+        <button onClick={() => setActivePage('grafik')} style={{ background: '#0F2040', color: '#C0C8D8', border: '0.5px solid #1A3050', borderRadius: 12, padding: '14px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
           📈 Lihat Grafik
         </button>
       </div>
