@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useTransactions } from './hooks/useTransactions'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from './firebase'
 import Layout from './components/Layout'
 import Login from './components/Login'
@@ -23,6 +23,8 @@ export default function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [showDrivePopup, setShowDrivePopup] = useState(false)
   const [budgets, setBudgets] = useState({})
+  const [goals, setGoals] = useState([])
+  const [debts, setDebts] = useState([])
 
   const now = new Date()
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1)
@@ -34,13 +36,23 @@ export default function App() {
     if (!isFirstOfMonth) return
 
     const checkPopup = async () => {
+      // Cek apakah sudah pernah export bulan ini
       const ref = doc(db, 'users', user.uid, 'exports', lastMonthKey)
       const snap = await getDoc(ref)
       if (!snap.exists()) setShowDrivePopup(true)
 
+      // Ambil budget bulan lalu
       const budgetRef = doc(db, 'users', user.uid, 'budgets', lastMonthKey)
       const budgetSnap = await getDoc(budgetRef)
       if (budgetSnap.exists()) setBudgets(budgetSnap.data())
+
+      // Ambil goals
+      const goalsSnap = await getDocs(collection(db, 'users', user.uid, 'goals'))
+      setGoals(goalsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+
+      // Ambil hutang/piutang
+      const debtsSnap = await getDocs(collection(db, 'users', user.uid, 'debts'))
+      setDebts(debtsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
     }
     checkPopup()
   }, [user])
@@ -83,6 +95,8 @@ export default function App() {
         <DriveExportPopup
           transactions={transactions}
           budgets={budgets}
+          goals={goals}
+          debts={debts}
           monthKey={lastMonthKey}
           userName={user.displayName}
           accessToken={accessToken}
