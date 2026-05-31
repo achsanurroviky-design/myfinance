@@ -5,6 +5,7 @@ import { auth, provider } from '../firebase'
 export function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [accessToken, setAccessToken] = useState(null)
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -14,8 +15,17 @@ export function useAuth() {
     return unsub
   }, [])
 
-  const login = () => signInWithPopup(auth, provider)
-  const logout = () => signOut(auth)
+  const login = async () => {
+    const result = await signInWithPopup(auth, provider)
+    const token = result._tokenResponse?.oauthAccessToken
+    if (token) setAccessToken(token)
+    return result
+  }
 
-  return { user, loading, login, logout }
+  const logout = () => {
+    setAccessToken(null)
+    signOut(auth)
+  }
+
+  return { user, loading, login, logout, accessToken }
 }
