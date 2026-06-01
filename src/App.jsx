@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import { useTransactions } from './hooks/useTransactions'
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from './firebase'
+import { getCurrency } from './utils/currency'
 import Layout from './components/Layout'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
@@ -16,6 +17,7 @@ import HutangPiutang from './components/HutangPiutang'
 import TransaksiRutin from './components/TransaksiRutin'
 import Insight from './components/Insight'
 import DriveExportPopup from './components/DriveExportPopup'
+import Settings from './components/Settings'
 
 export default function App() {
   const { user, loading, accessToken } = useAuth()
@@ -25,6 +27,7 @@ export default function App() {
   const [budgets, setBudgets] = useState({})
   const [goals, setGoals] = useState([])
   const [debts, setDebts] = useState([])
+  const [currency, setCurrencyState] = useState(getCurrency())
 
   const now = new Date()
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1)
@@ -36,21 +39,17 @@ export default function App() {
     if (!isFirstOfMonth) return
 
     const checkPopup = async () => {
-      // Cek apakah sudah pernah export bulan ini
       const ref = doc(db, 'users', user.uid, 'exports', lastMonthKey)
       const snap = await getDoc(ref)
       if (!snap.exists()) setShowDrivePopup(true)
 
-      // Ambil budget bulan lalu
       const budgetRef = doc(db, 'users', user.uid, 'budgets', lastMonthKey)
       const budgetSnap = await getDoc(budgetRef)
       if (budgetSnap.exists()) setBudgets(budgetSnap.data())
 
-      // Ambil goals
       const goalsSnap = await getDocs(collection(db, 'users', user.uid, 'goals'))
       setGoals(goalsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
 
-      // Ambil hutang/piutang
       const debtsSnap = await getDocs(collection(db, 'users', user.uid, 'debts'))
       setDebts(debtsSnap.docs.map(d => ({ id: d.id, ...d.data() })))
     }
@@ -59,8 +58,7 @@ export default function App() {
 
   const handleExportSuccess = async () => {
     await setDoc(doc(db, 'users', user.uid, 'exports', lastMonthKey), {
-      exported: true,
-      date: new Date().toISOString()
+      exported: true, date: new Date().toISOString()
     })
   }
 
@@ -73,16 +71,17 @@ export default function App() {
   if (!user) return <Login />
 
   const pages = {
-    dashboard: <Dashboard transactions={transactions} setActivePage={setActivePage} userId={user.uid} />,
-    transaksi: <TransactionForm addTransaction={addTransaction} />,
-    riwayat: <TransactionList transactions={transactions} deleteTransaction={deleteTransaction} />,
-    budget: <BudgetTracker transactions={transactions} userId={user.uid} />,
-    grafik: <GrafikPage transactions={transactions} />,
-    rekap: <RekapBulanan transactions={transactions} />,
-    tabungan: <SavingsGoal userId={user.uid} transactions={transactions} />,
-    hutang: <HutangPiutang userId={user.uid} />,
-    rutin: <TransaksiRutin userId={user.uid} addTransaction={addTransaction} />,
-    insight: <Insight transactions={transactions} />,
+    dashboard: <Dashboard transactions={transactions} setActivePage={setActivePage} userId={user.uid} currency={currency} />,
+    transaksi: <TransactionForm addTransaction={addTransaction} currency={currency} />,
+    riwayat: <TransactionList transactions={transactions} deleteTransaction={deleteTransaction} currency={currency} />,
+    budget: <BudgetTracker transactions={transactions} userId={user.uid} currency={currency} />,
+    grafik: <GrafikPage transactions={transactions} currency={currency} />,
+    rekap: <RekapBulanan transactions={transactions} currency={currency} />,
+    tabungan: <SavingsGoal userId={user.uid} transactions={transactions} currency={currency} />,
+    hutang: <HutangPiutang userId={user.uid} currency={currency} />,
+    rutin: <TransaksiRutin userId={user.uid} addTransaction={addTransaction} currency={currency} />,
+    insight: <Insight transactions={transactions} currency={currency} />,
+    settings: <Settings onCurrencyChange={setCurrencyState} />,
   }
 
   return (
