@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { formatCurrency } from '../utils/currency'
 
 const CATEGORIES = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
 
-export default function BudgetTracker({ transactions, userId }) {
+export default function BudgetTracker({ transactions, userId, currency = 'IDR' }) {
   const [budgets, setBudgets] = useState({})
   const [editing, setEditing] = useState({})
   const [inputValues, setInputValues] = useState({})
 
-  const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
-
+  const fmt = (n) => formatCurrency(n, currency)
   const now = new Date()
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
@@ -31,7 +31,6 @@ export default function BudgetTracker({ transactions, userId }) {
     setInputValues({})
   }
 
-  // Hitung pengeluaran per kategori bulan ini
   const spent = CATEGORIES.reduce((acc, cat) => {
     acc[cat] = transactions
       .filter(t => {
@@ -56,26 +55,20 @@ export default function BudgetTracker({ transactions, userId }) {
         <p style={{ fontSize: 12, color: '#3D5A80', margin: '2px 0 0' }}>Set batas pengeluaran per kategori — {monthKey}</p>
       </div>
 
-      {/* Ringkasan total */}
       {totalBudget > 0 && (
         <div style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>TOTAL BUDGET</div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#C0C8D8' }}>{fmt(totalBudget)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>TERPAKAI</div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#F87171' }}>{fmt(totalSpent)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>SISA</div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: totalBudget - totalSpent >= 0 ? '#4ADE80' : '#F87171' }}>
-                {fmt(totalBudget - totalSpent)}
+            {[
+              { label: 'TOTAL BUDGET', value: fmt(totalBudget), color: '#C0C8D8' },
+              { label: 'TERPAKAI', value: fmt(totalSpent), color: '#F87171' },
+              { label: 'SISA', value: fmt(totalBudget - totalSpent), color: totalBudget - totalSpent >= 0 ? '#4ADE80' : '#F87171' },
+            ].map(item => (
+              <div key={item.label}>
+                <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: item.color }}>{item.value}</div>
               </div>
-            </div>
+            ))}
           </div>
-          {/* Progress bar total */}
           <div style={{ marginTop: 12 }}>
             <div style={{ background: '#0F2040', borderRadius: 4, height: 6, overflow: 'hidden' }}>
               <div style={{
@@ -92,7 +85,6 @@ export default function BudgetTracker({ transactions, userId }) {
         </div>
       )}
 
-      {/* Per kategori */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {CATEGORIES.map(cat => {
           const budget = budgets[cat] || 0
@@ -102,15 +94,16 @@ export default function BudgetTracker({ transactions, userId }) {
           const warning = budget > 0 && !over && (use / budget) >= 0.8
 
           return (
-            <div key={cat} style={{ background: '#0A1628', border: `0.5px solid ${over ? '#4A1515' : warning ? '#4A3A05' : '#1A3050'}`, borderRadius: 12, padding: '14px 16px' }}>
+            <div key={cat} style={{
+              background: '#0A1628',
+              border: `0.5px solid ${over ? '#4A1515' : warning ? '#4A3A05' : '#1A3050'}`,
+              borderRadius: 12, padding: '14px 16px'
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: budget > 0 ? 10 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14 }}>
-                    {over ? '🚨' : warning ? '⚠️' : '✅'}
-                  </span>
+                  <span style={{ fontSize: 14 }}>{over ? '🚨' : warning ? '⚠️' : '✅'}</span>
                   <span style={{ fontSize: 13, fontWeight: 500, color: '#C0C8D8' }}>{cat}</span>
                 </div>
-
                 {editing[cat] ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input
@@ -118,11 +111,7 @@ export default function BudgetTracker({ transactions, userId }) {
                       value={inputValues[cat] || ''}
                       onChange={e => setInputValues({ ...inputValues, [cat]: e.target.value })}
                       placeholder="Nominal"
-                      style={{
-                        width: 120, background: '#0F2040', border: '0.5px solid #1A3050',
-                        borderRadius: 6, padding: '4px 8px', fontSize: 12, color: '#C0C8D8',
-                        outline: 'none'
-                      }}
+                      style={{ width: 120, background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 8px', fontSize: 12, color: '#C0C8D8', outline: 'none' }}
                       onKeyDown={e => e.key === 'Enter' && saveBudget(cat, inputValues[cat])}
                       autoFocus
                     />
@@ -142,11 +131,8 @@ export default function BudgetTracker({ transactions, userId }) {
                     )}
                     <button onClick={() => setEditing({ [cat]: true })} style={{
                       fontSize: 11, color: '#3D5A80', background: '#0F2040',
-                      border: '0.5px solid #1A3050', borderRadius: 6,
-                      padding: '4px 10px', cursor: 'pointer'
-                    }}>
-                      {budget > 0 ? 'Edit' : '+ Set'}
-                    </button>
+                      border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 10px', cursor: 'pointer'
+                    }}>{budget > 0 ? 'Edit' : '+ Set'}</button>
                   </div>
                 )}
               </div>
@@ -155,8 +141,7 @@ export default function BudgetTracker({ transactions, userId }) {
                 <>
                   <div style={{ background: '#0F2040', borderRadius: 4, height: 5, overflow: 'hidden' }}>
                     <div style={{
-                      height: 5, borderRadius: 4,
-                      width: `${pct}%`,
+                      height: 5, borderRadius: 4, width: `${pct}%`,
                       background: over ? '#F87171' : warning ? '#FCD34D' : '#4ADE80',
                       transition: 'width 0.3s'
                     }} />

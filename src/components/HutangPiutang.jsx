@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { formatCurrency } from '../utils/currency'
 
-export default function HutangPiutang({ userId }) {
+export default function HutangPiutang({ userId, currency = 'IDR' }) {
   const [items, setItems] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [type, setType] = useState('piutang')
@@ -11,7 +12,7 @@ export default function HutangPiutang({ userId }) {
   const [note, setNote] = useState('')
   const [dueDate, setDueDate] = useState('')
 
-  const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+  const fmt = (n) => formatCurrency(n, currency)
 
   useEffect(() => {
     if (!userId) return
@@ -24,7 +25,8 @@ export default function HutangPiutang({ userId }) {
   const addItem = async () => {
     if (!name || !amount) return
     await addDoc(collection(db, 'users', userId, 'debts'), {
-      type, name, amount: parseInt(amount), note, dueDate, settled: false, createdAt: new Date().toISOString()
+      type, name, amount: parseInt(amount), note, dueDate,
+      settled: false, createdAt: new Date().toISOString()
     })
     setName(''); setAmount(''); setNote(''); setDueDate(''); setShowForm(false)
   }
@@ -40,75 +42,87 @@ export default function HutangPiutang({ userId }) {
   const piutang = items.filter(i => i.type === 'piutang' && !i.settled)
   const hutang = items.filter(i => i.type === 'hutang' && !i.settled)
   const settled = items.filter(i => i.settled)
-
   const totalPiutang = piutang.reduce((a, b) => a + b.amount, 0)
   const totalHutang = hutang.reduce((a, b) => a + b.amount, 0)
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Hutang & Piutang</h2>
-          <p className="text-gray-500 text-sm">Catat hutang dan tagihan ke orang lain</p>
+          <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 2, marginBottom: 2 }}>CATATAN</div>
+          <h2 style={{ fontSize: 20, fontWeight: 500, color: '#C0C8D8', margin: 0 }}>Hutang & Piutang</h2>
+          <p style={{ fontSize: 12, color: '#3D5A80', margin: '2px 0 0' }}>Catat hutang dan tagihan ke orang lain</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors">
-          + Tambah
-        </button>
+        <button onClick={() => setShowForm(!showForm)} style={{
+          background: '#C0C8D8', color: '#0A1628', border: 'none',
+          borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer'
+        }}>+ Tambah</button>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-green-50 rounded-2xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Piutang (orang hutang ke kamu)</p>
-          <p className="font-bold text-green-600 text-sm">{fmt(totalPiutang)}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ background: '#052814', border: '0.5px solid #0A3020', borderRadius: 12, padding: '12px 14px' }}>
+          <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>PIUTANG</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#4ADE80' }}>{fmt(totalPiutang)}</div>
+          <div style={{ fontSize: 10, color: '#3D5A80', marginTop: 2 }}>orang hutang ke kamu</div>
         </div>
-        <div className="bg-red-50 rounded-2xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Hutang (kamu hutang ke orang)</p>
-          <p className="font-bold text-red-500 text-sm">{fmt(totalHutang)}</p>
+        <div style={{ background: '#280505', border: '0.5px solid #3A0A0A', borderRadius: 12, padding: '12px 14px' }}>
+          <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>HUTANG</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#F87171' }}>{fmt(totalHutang)}</div>
+          <div style={{ fontSize: 10, color: '#3D5A80', marginTop: 2 }}>kamu hutang ke orang</div>
         </div>
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
-          <div className="flex gap-2">
+        <div style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1 }}>TAMBAH BARU</div>
+          <div style={{ display: 'flex', gap: 8 }}>
             {['piutang', 'hutang'].map(t => (
-              <button key={t} onClick={() => setType(t)}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${type === t ? t === 'piutang' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                {t === 'piutang' ? '💰 Piutang' : '💸 Hutang'}
-              </button>
+              <button key={t} onClick={() => setType(t)} style={{
+                flex: 1, padding: '8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                background: type === t ? (t === 'piutang' ? '#052814' : '#280505') : '#0F2040',
+                color: type === t ? (t === 'piutang' ? '#4ADE80' : '#F87171') : '#3D5A80',
+              }}>{t === 'piutang' ? '💰 Piutang' : '💸 Hutang'}</button>
             ))}
           </div>
-          <input type="text" placeholder="Nama orang" value={name} onChange={e => setName(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400" />
-          <input type="number" placeholder="Jumlah (Rp)" value={amount} onChange={e => setAmount(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400" />
-          <input type="text" placeholder="Catatan (opsional)" value={note} onChange={e => setNote(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400" />
+          {[
+            { placeholder: 'Nama orang', value: name, onChange: setName, type: 'text' },
+            { placeholder: 'Jumlah', value: amount, onChange: setAmount, type: 'number' },
+            { placeholder: 'Catatan (opsional)', value: note, onChange: setNote, type: 'text' },
+          ].map((f, i) => (
+            <input key={i} type={f.type} placeholder={f.placeholder} value={f.value}
+              onChange={e => f.onChange(e.target.value)}
+              style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+          ))}
           <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400" />
-          <div className="flex gap-2">
-            <button onClick={addItem} className="flex-1 bg-blue-500 text-white rounded-xl py-2.5 text-sm font-medium">Simpan</button>
-            <button onClick={() => setShowForm(false)} className="flex-1 bg-gray-100 text-gray-600 rounded-xl py-2.5 text-sm font-medium">Batal</button>
+            style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={addItem} style={{ flex: 1, background: '#C0C8D8', color: '#0A1628', border: 'none', borderRadius: 8, padding: '10px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Simpan</button>
+            <button onClick={() => setShowForm(false)} style={{ flex: 1, background: '#0F2040', color: '#3D5A80', border: '0.5px solid #1A3050', borderRadius: 8, padding: '10px', fontSize: 12, cursor: 'pointer' }}>Batal</button>
           </div>
         </div>
       )}
 
-      {[{ label: 'Piutang', data: piutang, color: 'green' }, { label: 'Hutang', data: hutang, color: 'red' }].map(section => (
+      {[{ label: 'Piutang', data: piutang, color: '#4ADE80' }, { label: 'Hutang', data: hutang, color: '#F87171' }].map(section => (
         section.data.length > 0 && (
-          <div key={section.label} className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-            <div className="px-4 py-3">
-              <p className="text-sm font-semibold text-gray-700">{section.label}</p>
+          <div key={section.label} style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #1A3050' }}>
+              <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1 }}>{section.label.toUpperCase()}</div>
             </div>
             {section.data.map(item => (
-              <div key={item.id} className="flex items-center justify-between p-4">
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid #0F2040' }}>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">{item.name}</p>
-                  <p className="text-xs text-gray-400">{item.note || '-'} {item.dueDate && `· jatuh tempo ${item.dueDate}`}</p>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#C0C8D8' }}>{item.name}</div>
+                  <div style={{ fontSize: 11, color: '#3D5A80', marginTop: 2 }}>
+                    {item.note || '—'}{item.dueDate && ` · jatuh tempo ${item.dueDate}`}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className={`text-sm font-semibold ${section.color === 'green' ? 'text-green-600' : 'text-red-500'}`}>{fmt(item.amount)}</p>
-                  <button onClick={() => toggleSettle(item.id, item.settled)} className="text-xs bg-gray-100 hover:bg-green-100 text-gray-500 hover:text-green-600 px-2 py-1 rounded-lg transition-colors">Lunas</button>
-                  <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-400 text-lg">×</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: section.color }}>{fmt(item.amount)}</span>
+                  <button onClick={() => toggleSettle(item.id, item.settled)} style={{
+                    fontSize: 11, background: '#0F2040', color: '#4ADE80',
+                    border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 8px', cursor: 'pointer'
+                  }}>Lunas</button>
+                  <button onClick={() => deleteItem(item.id)} style={{ fontSize: 16, color: '#3D5A80', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
                 </div>
               </div>
             ))}
@@ -117,19 +131,21 @@ export default function HutangPiutang({ userId }) {
       ))}
 
       {settled.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-          <div className="px-4 py-3">
-            <p className="text-sm font-semibold text-gray-400">Sudah Lunas</p>
+        <div style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #1A3050' }}>
+            <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1 }}>SUDAH LUNAS</div>
           </div>
           {settled.map(item => (
-            <div key={item.id} className="flex items-center justify-between p-4 opacity-50">
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid #0F2040', opacity: 0.5 }}>
               <div>
-                <p className="text-sm font-medium text-gray-700 line-through">{item.name}</p>
-                <p className="text-xs text-gray-400">{fmt(item.amount)}</p>
+                <div style={{ fontSize: 13, color: '#C0C8D8', textDecoration: 'line-through' }}>{item.name}</div>
+                <div style={{ fontSize: 11, color: '#3D5A80' }}>{fmt(item.amount)}</div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => toggleSettle(item.id, item.settled)} className="text-xs text-blue-400 hover:underline">Batalkan</button>
-                <button onClick={() => deleteItem(item.id)} className="text-gray-300 hover:text-red-400 text-lg">×</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => toggleSettle(item.id, item.settled)} style={{
+                  fontSize: 11, color: '#3D5A80', background: 'none', border: 'none', cursor: 'pointer'
+                }}>Batalkan</button>
+                <button onClick={() => deleteItem(item.id)} style={{ fontSize: 16, color: '#3D5A80', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
               </div>
             </div>
           ))}
@@ -137,9 +153,9 @@ export default function HutangPiutang({ userId }) {
       )}
 
       {items.length === 0 && !showForm && (
-        <div className="text-center py-16 text-gray-400">
-          <div className="text-5xl mb-3">🤝</div>
-          <p className="text-sm">Belum ada catatan hutang/piutang</p>
+        <div style={{ textAlign: 'center', padding: '64px 0', color: '#3D5A80' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🤝</div>
+          <div style={{ fontSize: 13 }}>Belum ada catatan hutang/piutang</div>
         </div>
       )}
     </div>

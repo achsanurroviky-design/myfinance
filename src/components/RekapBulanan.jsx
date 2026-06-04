@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
+import { formatCurrency } from '../utils/currency'
 
-export default function RekapBulanan({ transactions }) {
-  const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+export default function RekapBulanan({ transactions, currency = 'IDR' }) {
+  const fmt = (n) => formatCurrency(n, currency)
 
   const rekap = useMemo(() => {
     const map = {}
@@ -20,9 +21,7 @@ export default function RekapBulanan({ transactions }) {
       rows.push([
         new Date(t.date).toLocaleDateString('id-ID'),
         t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
-        t.category,
-        t.note || '',
-        t.amount
+        t.category, t.note || '', t.amount
       ])
     })
     const csv = rows.map(r => r.join(',')).join('\n')
@@ -30,56 +29,62 @@ export default function RekapBulanan({ transactions }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `myfinance-${new Date().toISOString().slice(0,10)}.csv`
+    a.download = `myfinance-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
   }
 
   if (rekap.length === 0) {
     return (
-      <div className="text-center py-20 text-gray-400">
-        <div className="text-5xl mb-3">🗓️</div>
-        <p>Belum ada data rekap</p>
+      <div style={{ textAlign: 'center', padding: '80px 0', color: '#3D5A80' }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🗓️</div>
+        <div style={{ fontSize: 13 }}>Belum ada data rekap</div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Rekap Bulanan</h2>
-          <p className="text-gray-500 text-sm">Ringkasan per bulan</p>
+          <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 2, marginBottom: 2 }}>LAPORAN</div>
+          <h2 style={{ fontSize: 20, fontWeight: 500, color: '#C0C8D8', margin: 0 }}>Rekap Bulanan</h2>
+          <p style={{ fontSize: 12, color: '#3D5A80', margin: '2px 0 0' }}>Ringkasan per bulan</p>
         </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-600 transition-colors"
-        >
-          📥 Export CSV
-        </button>
+        <button onClick={exportCSV} style={{
+          background: '#0F2040', color: '#C0C8D8', border: '0.5px solid #1A3050',
+          borderRadius: 10, padding: '10px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer'
+        }}>📥 Export CSV</button>
       </div>
 
-      <div className="space-y-3">
-        {rekap.map(r => (
-          <div key={r.month} className="bg-white rounded-2xl border border-gray-100 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-800">{r.month}</h3>
-              <span className={`text-sm font-bold ${r.income - r.outcome >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                {fmt(r.income - r.outcome)}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-green-50 rounded-xl p-3">
-                <p className="text-xs text-gray-500 mb-1">Pemasukan</p>
-                <p className="text-sm font-semibold text-green-600">{fmt(r.income)}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {rekap.map(r => {
+          const balance = r.income - r.outcome
+          const savingRate = r.income > 0 ? Math.round((balance / r.income) * 100) : 0
+          return (
+            <div key={r.month} style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#C0C8D8' }}>{r.month}</div>
+                  <div style={{ fontSize: 11, color: '#3D5A80', marginTop: 2 }}>{r.transactions.length} transaksi</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: balance >= 0 ? '#4ADE80' : '#F87171' }}>{fmt(balance)}</div>
+                  <div style={{ fontSize: 10, color: '#3D5A80', marginTop: 2 }}>Saving rate {savingRate}%</div>
+                </div>
               </div>
-              <div className="bg-red-50 rounded-xl p-3">
-                <p className="text-xs text-gray-500 mb-1">Pengeluaran</p>
-                <p className="text-sm font-semibold text-red-500">{fmt(r.outcome)}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ background: '#052814', borderRadius: 10, padding: '10px 12px', border: '0.5px solid #0A3020' }}>
+                  <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>PEMASUKAN</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#4ADE80' }}>{fmt(r.income)}</div>
+                </div>
+                <div style={{ background: '#280505', borderRadius: 10, padding: '10px 12px', border: '0.5px solid #3A0A0A' }}>
+                  <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>PENGELUARAN</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#F87171' }}>{fmt(r.outcome)}</div>
+                </div>
               </div>
             </div>
-            <p className="text-xs text-gray-400 mt-2">{r.transactions.length} transaksi</p>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

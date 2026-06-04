@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { formatCurrency } from '../utils/currency'
 
 const s = {
   card: { background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 12, padding: '14px 16px' },
@@ -8,11 +9,11 @@ const s = {
   section: { background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: '16px' },
 }
 
-export default function Dashboard({ transactions, setActivePage, userId }) {
+export default function Dashboard({ transactions, setActivePage, userId, currency = 'IDR' }) {
   const [budgets, setBudgets] = useState({})
-
   const now = new Date()
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const fmt = (n) => formatCurrency(n, currency)
 
   useEffect(() => {
     if (!userId) return
@@ -47,20 +48,16 @@ export default function Dashboard({ transactions, setActivePage, userId }) {
     return alerts
   }, [transactions, budgets, monthKey])
 
-  const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
   const recent = transactions.slice(0, 5)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-      {/* Header */}
       <div>
         <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 2, marginBottom: 2 }}>OVERVIEW</div>
         <h2 style={{ fontSize: 20, fontWeight: 500, color: '#C0C8D8', margin: 0 }}>Dashboard</h2>
         <p style={{ fontSize: 12, color: '#3D5A80', margin: '2px 0 0' }}>Ringkasan keuangan bulan ini</p>
       </div>
 
-      {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
         {[
           { label: 'SALDO', value: fmt(stats.balance), color: stats.balance >= 0 ? '#6EE7B7' : '#F87171' },
@@ -75,7 +72,6 @@ export default function Dashboard({ transactions, setActivePage, userId }) {
         ))}
       </div>
 
-      {/* Budget alerts */}
       {budgetAlerts.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {budgetAlerts.map(alert => (
@@ -105,7 +101,6 @@ export default function Dashboard({ transactions, setActivePage, userId }) {
         </div>
       )}
 
-      {/* Recent transactions */}
       <div style={s.section}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 500, color: '#C0C8D8', letterSpacing: 0.5 }}>TRANSAKSI TERBARU</div>
@@ -123,8 +118,7 @@ export default function Dashboard({ transactions, setActivePage, userId }) {
             {recent.map(t => (
               <div key={t.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 12px', background: '#0F2040', borderRadius: 10,
-                border: '0.5px solid #1A3050'
+                padding: '10px 12px', background: '#0F2040', borderRadius: 10, border: '0.5px solid #1A3050'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
@@ -132,9 +126,7 @@ export default function Dashboard({ transactions, setActivePage, userId }) {
                     background: t.type === 'income' ? '#052814' : '#280505',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 14, color: t.type === 'income' ? '#4ADE80' : '#F87171'
-                  }}>
-                    {t.type === 'income' ? '↑' : '↓'}
-                  </div>
+                  }}>{t.type === 'income' ? '↑' : '↓'}</div>
                   <div>
                     <div style={{ fontSize: 13, color: '#C0C8D8', fontWeight: 500 }}>{t.category}</div>
                     <div style={{ fontSize: 11, color: '#3D5A80' }}>{t.note || '—'} · {new Date(t.date).toLocaleDateString('id-ID')}</div>
@@ -149,24 +141,17 @@ export default function Dashboard({ transactions, setActivePage, userId }) {
         )}
       </div>
 
-      {/* Quick actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <button onClick={() => setActivePage('transaksi')} style={{
           background: '#C0C8D8', color: '#0A1628', border: 'none',
           borderRadius: 12, padding: '14px', fontSize: 13, fontWeight: 500,
           cursor: 'pointer', letterSpacing: 0.5
-        }}>
-          + Tambah Transaksi
-        </button>
+        }}>+ Tambah Transaksi</button>
         <button onClick={() => setActivePage('grafik')} style={{
-          background: '#0F2040', color: '#C0C8D8',
-          border: '0.5px solid #1A3050', borderRadius: 12,
-          padding: '14px', fontSize: 13, fontWeight: 500, cursor: 'pointer'
-        }}>
-          📈 Lihat Grafik
-        </button>
+          background: '#0F2040', color: '#C0C8D8', border: '0.5px solid #1A3050',
+          borderRadius: 12, padding: '14px', fontSize: 13, fontWeight: 500, cursor: 'pointer'
+        }}>📈 Lihat Grafik</button>
       </div>
-
     </div>
   )
 }

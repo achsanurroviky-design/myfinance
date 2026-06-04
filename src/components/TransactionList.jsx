@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { formatCurrency } from '../utils/currency'
 
 const CATEGORIES_INCOME = ['Gaji', 'Freelance', 'Bisnis', 'Investasi', 'Lainnya']
 const CATEGORIES_OUTCOME = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
 
-export default function TransactionList({ transactions, deleteTransaction }) {
+export default function TransactionList({ transactions, deleteTransaction, currency = 'IDR' }) {
   const [filterType, setFilterType] = useState('all')
   const [filterMonth, setFilterMonth] = useState('')
   const [search, setSearch] = useState('')
@@ -13,7 +14,7 @@ export default function TransactionList({ transactions, deleteTransaction }) {
   const [editItem, setEditItem] = useState(null)
   const [editForm, setEditForm] = useState({})
 
-  const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+  const fmt = (n) => formatCurrency(n, currency)
 
   const filtered = transactions.filter(t => {
     if (filterType !== 'all' && t.type !== filterType) return false
@@ -29,34 +30,34 @@ export default function TransactionList({ transactions, deleteTransaction }) {
     setEditForm({ type: t.type, amount: t.amount, category: t.category, note: t.note || '', date: t.date.slice(0, 10) })
   }
 
-  const handleSaveEdit = async () => {
-    await updateDoc(doc(db, 'users', transactions[0]?.userId || '', 'transactions', editItem), {
-      ...editForm, amount: parseInt(editForm.amount)
+  const handleSaveEdit = async (userId) => {
+    if (!editItem) return
+    const txRef = transactions.find(t => t.id === editItem)
+    if (!txRef) return
+    await updateDoc(doc(db, 'users', userId, 'transactions', editItem), {
+      type: editForm.type,
+      amount: parseInt(editForm.amount),
+      category: editForm.category,
+      note: editForm.note,
+      date: new Date(editForm.date).toISOString()
     })
     setEditItem(null)
   }
 
+  const userId = transactions[0]?.userId || transactions.find(t => t)?.userId
   const categories = editForm.type === 'income' ? CATEGORIES_INCOME : CATEGORIES_OUTCOME
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-      {/* Header */}
       <div>
         <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 2, marginBottom: 2 }}>HISTORI</div>
         <h2 style={{ fontSize: 20, fontWeight: 500, color: '#C0C8D8', margin: 0 }}>Riwayat Transaksi</h2>
         <p style={{ fontSize: 12, color: '#3D5A80', margin: '2px 0 0' }}>{filtered.length} transaksi ditemukan</p>
       </div>
 
-      {/* Filters */}
       <div style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input
-          type="text"
-          placeholder="Cari kategori atau catatan..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }}
-        />
+        <input type="text" placeholder="Cari kategori atau catatan..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {['all', 'income', 'outcome'].map(t => (
             <button key={t} onClick={() => setFilterType(t)} style={{
@@ -77,7 +78,6 @@ export default function TransactionList({ transactions, deleteTransaction }) {
         </div>
       </div>
 
-      {/* List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 0', color: '#3D5A80' }}>
@@ -87,7 +87,6 @@ export default function TransactionList({ transactions, deleteTransaction }) {
         ) : filtered.map(t => (
           <div key={t.id} style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 12, overflow: 'hidden' }}>
             {editItem === t.id ? (
-              /* Edit form */
               <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1 }}>EDIT TRANSAKSI</div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -96,13 +95,11 @@ export default function TransactionList({ transactions, deleteTransaction }) {
                       flex: 1, padding: '6px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11,
                       background: editForm.type === tp ? (tp === 'income' ? '#052814' : '#280505') : '#0F2040',
                       color: editForm.type === tp ? (tp === 'income' ? '#4ADE80' : '#F87171') : '#3D5A80',
-                    }}>
-                      {tp === 'income' ? '↑ Pemasukan' : '↓ Pengeluaran'}
-                    </button>
+                    }}>{tp === 'income' ? '↑ Pemasukan' : '↓ Pengeluaran'}</button>
                   ))}
                 </div>
                 <input type="number" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
-                  placeholder="Nominal" style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none' }} />
+                  placeholder="Nominal" style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {categories.map(c => (
                     <button key={c} onClick={() => setEditForm({ ...editForm, category: c })} style={{
@@ -113,25 +110,22 @@ export default function TransactionList({ transactions, deleteTransaction }) {
                   ))}
                 </div>
                 <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })}
-                  style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none' }} />
+                  style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                 <input type="text" value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })}
-                  placeholder="Catatan (opsional)" style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none' }} />
+                  placeholder="Catatan (opsional)" style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={handleSaveEdit} style={{ flex: 1, background: '#C0C8D8', color: '#0A1628', border: 'none', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Simpan</button>
+                  <button onClick={() => handleSaveEdit(t.userId)} style={{ flex: 1, background: '#C0C8D8', color: '#0A1628', border: 'none', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Simpan</button>
                   <button onClick={() => setEditItem(null)} style={{ flex: 1, background: '#0F2040', color: '#3D5A80', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px', fontSize: 12, cursor: 'pointer' }}>Batal</button>
                 </div>
               </div>
             ) : (
-              /* Normal view */
               <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
                     background: t.type === 'income' ? '#052814' : '#280505',
                     color: t.type === 'income' ? '#4ADE80' : '#F87171'
-                  }}>
-                    {t.type === 'income' ? '↑' : '↓'}
-                  </div>
+                  }}>{t.type === 'income' ? '↑' : '↓'}</div>
                   <div>
                     <div style={{ fontSize: 13, color: '#C0C8D8', fontWeight: 500 }}>{t.category}</div>
                     <div style={{ fontSize: 11, color: '#3D5A80' }}>{t.note || '—'} · {new Date(t.date).toLocaleDateString('id-ID')}</div>
@@ -146,7 +140,7 @@ export default function TransactionList({ transactions, deleteTransaction }) {
                     border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 8px', cursor: 'pointer'
                   }}>Edit</button>
                   <button onClick={() => setConfirmDelete(t.id)} style={{
-                    fontSize: 14, color: '#3D5A80', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1
+                    fontSize: 14, color: '#3D5A80', background: 'none', border: 'none', cursor: 'pointer'
                   }}>×</button>
                 </div>
               </div>
@@ -155,7 +149,6 @@ export default function TransactionList({ transactions, deleteTransaction }) {
         ))}
       </div>
 
-      {/* Konfirmasi hapus */}
       {confirmDelete && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
           <div style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 16, padding: 24, maxWidth: 320, width: '100%' }}>
