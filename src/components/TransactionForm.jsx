@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatCurrency } from '../utils/currency'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
+import { useAuth } from '../hooks/useAuth'
 
-const CATEGORIES_INCOME = ['Gaji', 'Freelance', 'Bisnis', 'Investasi', 'Lainnya']
-const CATEGORIES_OUTCOME = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
+const DEFAULT_INCOME = ['Gaji', 'Freelance', 'Bisnis', 'Investasi', 'Lainnya']
+const DEFAULT_OUTCOME = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
 
 export default function TransactionForm({ addTransaction, currency = 'IDR' }) {
+  const { user } = useAuth()
   const [type, setType] = useState('outcome')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('')
@@ -12,8 +16,21 @@ export default function TransactionForm({ addTransaction, currency = 'IDR' }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [incomeCategories, setIncomeCategories] = useState(DEFAULT_INCOME)
+  const [outcomeCategories, setOutcomeCategories] = useState(DEFAULT_OUTCOME)
 
-  const categories = type === 'income' ? CATEGORIES_INCOME : CATEGORIES_OUTCOME
+  useEffect(() => {
+    if (!user) return
+    getDoc(doc(db, 'users', user.uid, 'settings', 'categories')).then(d => {
+      if (d.exists()) {
+        const data = d.data()
+        if (data.income) setIncomeCategories(data.income)
+        if (data.outcome) setOutcomeCategories(data.outcome)
+      }
+    })
+  }, [user])
+
+  const categories = type === 'income' ? incomeCategories : outcomeCategories
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -37,7 +54,6 @@ export default function TransactionForm({ addTransaction, currency = 'IDR' }) {
       </div>
 
       <div style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: 16 }}>
-        {/* Type toggle */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {['income', 'outcome'].map(t => (
             <button key={t} onClick={() => { setType(t); setCategory('') }} style={{
@@ -53,17 +69,13 @@ export default function TransactionForm({ addTransaction, currency = 'IDR' }) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Amount */}
           <div>
             <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1, marginBottom: 6 }}>NOMINAL</div>
-            <input
-              type="number" value={amount} onChange={e => setAmount(e.target.value)}
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
               placeholder="0" required
-              style={{ width: '100%', background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 10, padding: '12px 14px', fontSize: 16, color: '#C0C8D8', outline: 'none', boxSizing: 'border-box' }}
-            />
+              style={{ width: '100%', background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 10, padding: '12px 14px', fontSize: 16, color: '#C0C8D8', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Category */}
           <div>
             <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1, marginBottom: 8 }}>KATEGORI</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -78,23 +90,17 @@ export default function TransactionForm({ addTransaction, currency = 'IDR' }) {
             </div>
           </div>
 
-          {/* Date */}
           <div>
             <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1, marginBottom: 6 }}>TANGGAL</div>
-            <input
-              type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ width: '100%', background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#C0C8D8', outline: 'none', boxSizing: 'border-box' }}
-            />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ width: '100%', background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#C0C8D8', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Note */}
           <div>
             <div style={{ fontSize: 11, color: '#3D5A80', letterSpacing: 1, marginBottom: 6 }}>CATATAN <span style={{ color: '#1A3050' }}>(OPSIONAL)</span></div>
-            <input
-              type="text" value={note} onChange={e => setNote(e.target.value)}
+            <input type="text" value={note} onChange={e => setNote(e.target.value)}
               placeholder="Contoh: makan siang di warteg"
-              style={{ width: '100%', background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#C0C8D8', outline: 'none', boxSizing: 'border-box' }}
-            />
+              style={{ width: '100%', background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#C0C8D8', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
           <button type="submit" disabled={loading || !amount || !category} style={{

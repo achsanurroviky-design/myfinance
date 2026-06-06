@@ -1,8 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatCurrency } from '../utils/currency'
+import { generateAndUploadPDF } from '../utils/exportToDrive'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 
-export default function RekapBulanan({ transactions, currency = 'IDR' }) {
+export default function RekapBulanan({ transactions, currency = 'IDR', userId, accessToken, goals, debts, userName }) {
   const fmt = (n) => formatCurrency(n, currency)
+  const [exporting, setExporting] = useState(null)
+  const [exported, setExported] = useState({})
 
   const rekap = useMemo(() => {
     const map = {}
@@ -33,6 +38,27 @@ export default function RekapBulanan({ transactions, currency = 'IDR' }) {
     a.click()
   }
 
+  const exportToDrive = async (monthKey, budgets) => {
+    if (!accessToken) {
+      alert('Silakan login ulang untuk menggunakan fitur export ke Drive.')
+      return
+    }
+    setExporting(monthKey)
+    try {
+      await generateAndUploadPDF({
+        transactions, budgets: budgets || {}, goals: goals || [],
+        debts: debts || [], monthKey, userName, accessToken
+      })
+      await setDoc(doc(db, 'users', userId, 'exports', monthKey), {
+        exported: true, date: new Date().toISOString()
+      })
+      setExported(prev => ({ ...prev, [monthKey]: true }))
+    } catch (e) {
+      alert('Gagal export ke Drive. Coba login ulang.')
+    }
+    setExporting(null)
+  }
+
   if (rekap.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0', color: '#3D5A80' }}>
@@ -60,6 +86,9 @@ export default function RekapBulanan({ transactions, currency = 'IDR' }) {
         {rekap.map(r => {
           const balance = r.income - r.outcome
           const savingRate = r.income > 0 ? Math.round((balance / r.income) * 100) : 0
+          const isExporting = exporting === r.month
+          const isDone = exported[r.month]
+
           return (
             <div key={r.month} style={{ background: '#0A1628', border: '0.5px solid #1A3050', borderRadius: 14, padding: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -72,7 +101,8 @@ export default function RekapBulanan({ transactions, currency = 'IDR' }) {
                   <div style={{ fontSize: 10, color: '#3D5A80', marginTop: 2 }}>Saving rate {savingRate}%</div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                 <div style={{ background: '#052814', borderRadius: 10, padding: '10px 12px', border: '0.5px solid #0A3020' }}>
                   <div style={{ fontSize: 10, color: '#3D5A80', letterSpacing: 1, marginBottom: 4 }}>PEMASUKAN</div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#4ADE80' }}>{fmt(r.income)}</div>
@@ -82,6 +112,19 @@ export default function RekapBulanan({ transactions, currency = 'IDR' }) {
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#F87171' }}>{fmt(r.outcome)}</div>
                 </div>
               </div>
+
+              <button
+                onClick={() => exportToDrive(r.month)}
+                disabled={isExporting}
+                style={{
+                  width: '100%', padding: '9px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: isDone ? '#052814' : '#0F2040',
+                  color: isDone ? '#4ADE80' : '#C0C8D8',
+                  fontSize: 12, fontWeight: 500,
+                  border: `0.5px solid ${isDone ? '#0A3020' : '#1A3050'}`
+                }}>
+                {isExporting ? 'Mengupload ke Drive...' : isDone ? '✅ Sudah di-export ke Drive' : '☁️ Export ke Google Drive'}
+              </button>
             </div>
           )
         })}

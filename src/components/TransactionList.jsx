@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { doc, updateDoc } from 'firebase/firestore'
-import { db } from '../firebase'
 import { formatCurrency } from '../utils/currency'
 
 const CATEGORIES_INCOME = ['Gaji', 'Freelance', 'Bisnis', 'Investasi', 'Lainnya']
 const CATEGORIES_OUTCOME = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
 
-export default function TransactionList({ transactions, deleteTransaction, currency = 'IDR' }) {
+export default function TransactionList({ transactions, deleteTransaction, updateTransaction, currency = 'IDR' }) {
   const [filterType, setFilterType] = useState('all')
   const [filterMonth, setFilterMonth] = useState('')
   const [search, setSearch] = useState('')
@@ -30,21 +28,12 @@ export default function TransactionList({ transactions, deleteTransaction, curre
     setEditForm({ type: t.type, amount: t.amount, category: t.category, note: t.note || '', date: t.date.slice(0, 10) })
   }
 
-  const handleSaveEdit = async (userId) => {
-    if (!editItem) return
-    const txRef = transactions.find(t => t.id === editItem)
-    if (!txRef) return
-    await updateDoc(doc(db, 'users', userId, 'transactions', editItem), {
-      type: editForm.type,
-      amount: parseInt(editForm.amount),
-      category: editForm.category,
-      note: editForm.note,
-      date: new Date(editForm.date).toISOString()
-    })
+  const handleSaveEdit = async () => {
+    if (!editItem || !editForm.amount || !editForm.category) return
+    await updateTransaction(editItem, editForm)
     setEditItem(null)
   }
 
-  const userId = transactions[0]?.userId || transactions.find(t => t)?.userId
   const categories = editForm.type === 'income' ? CATEGORIES_INCOME : CATEGORIES_OUTCOME
 
   return (
@@ -114,7 +103,7 @@ export default function TransactionList({ transactions, deleteTransaction, curre
                 <input type="text" value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })}
                   placeholder="Catatan (opsional)" style={{ background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#C0C8D8', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => handleSaveEdit(t.userId)} style={{ flex: 1, background: '#C0C8D8', color: '#0A1628', border: 'none', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Simpan</button>
+                  <button onClick={handleSaveEdit} style={{ flex: 1, background: '#C0C8D8', color: '#0A1628', border: 'none', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Simpan</button>
                   <button onClick={() => setEditItem(null)} style={{ flex: 1, background: '#0F2040', color: '#3D5A80', border: '0.5px solid #1A3050', borderRadius: 8, padding: '8px', fontSize: 12, cursor: 'pointer' }}>Batal</button>
                 </div>
               </div>

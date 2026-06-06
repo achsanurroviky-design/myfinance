@@ -21,7 +21,7 @@ import Settings from './components/Settings'
 
 export default function App() {
   const { user, loading, accessToken } = useAuth()
-  const { transactions, addTransaction, deleteTransaction } = useTransactions(user?.uid)
+  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions(user?.uid)
   const [activePage, setActivePage] = useState('dashboard')
   const [showDrivePopup, setShowDrivePopup] = useState(false)
   const [budgets, setBudgets] = useState({})
@@ -73,10 +73,10 @@ export default function App() {
   const pages = {
     dashboard: <Dashboard transactions={transactions} setActivePage={setActivePage} userId={user.uid} currency={currency} />,
     transaksi: <TransactionForm addTransaction={addTransaction} currency={currency} />,
-    riwayat: <TransactionList transactions={transactions} deleteTransaction={deleteTransaction} currency={currency} />,
+    riwayat: <TransactionList transactions={transactions} deleteTransaction={deleteTransaction} updateTransaction={updateTransaction} currency={currency} />,
     budget: <BudgetTracker transactions={transactions} userId={user.uid} currency={currency} />,
     grafik: <GrafikPage transactions={transactions} currency={currency} />,
-    rekap: <RekapBulanan transactions={transactions} currency={currency} />,
+    rekap: <RekapBulanan transactions={transactions} currency={currency} userId={user.uid} accessToken={accessToken} goals={goals} debts={debts} userName={user.displayName} />,
     tabungan: <SavingsGoal userId={user.uid} transactions={transactions} currency={currency} />,
     hutang: <HutangPiutang userId={user.uid} currency={currency} />,
     rutin: <TransaksiRutin userId={user.uid} addTransaction={addTransaction} currency={currency} />,
