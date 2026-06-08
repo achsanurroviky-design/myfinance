@@ -3,12 +3,13 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { formatCurrency } from '../utils/currency'
 
-const CATEGORIES = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
+const DEFAULT_CATEGORIES = ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Lainnya']
 
 export default function BudgetTracker({ transactions, userId, currency = 'IDR' }) {
   const [budgets, setBudgets] = useState({})
   const [editing, setEditing] = useState({})
   const [inputValues, setInputValues] = useState({})
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
 
   const fmt = (n) => formatCurrency(n, currency)
   const now = new Date()
@@ -16,8 +17,15 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
 
   useEffect(() => {
     if (!userId) return
+    // Load budget
     getDoc(doc(db, 'users', userId, 'budgets', monthKey)).then(d => {
       if (d.exists()) setBudgets(d.data())
+    })
+    // Load kategori custom
+    getDoc(doc(db, 'users', userId, 'settings', 'categories')).then(d => {
+      if (d.exists() && d.data().outcome) {
+        setCategories(d.data().outcome)
+      }
     })
   }, [userId, monthKey])
 
@@ -31,7 +39,14 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
     setInputValues({})
   }
 
-  const spent = CATEGORIES.reduce((acc, cat) => {
+  const deleteBudget = async (category) => {
+    const updated = { ...budgets }
+    delete updated[category]
+    setBudgets(updated)
+    await setDoc(doc(db, 'users', userId, 'budgets', monthKey), updated)
+  }
+
+  const spent = categories.reduce((acc, cat) => {
     acc[cat] = transactions
       .filter(t => {
         const tDate = new Date(t.date)
@@ -45,7 +60,7 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
   }, {})
 
   const totalBudget = Object.values(budgets).reduce((a, b) => a + b, 0)
-  const totalSpent = CATEGORIES.reduce((a, cat) => a + (spent[cat] || 0), 0)
+  const totalSpent = categories.reduce((a, cat) => a + (spent[cat] || 0), 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -86,7 +101,7 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {CATEGORIES.map(cat => {
+        {categories.map(cat => {
           const budget = budgets[cat] || 0
           const use = spent[cat] || 0
           const pct = budget > 0 ? Math.min((use / budget) * 100, 100) : 0
@@ -104,6 +119,7 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
                   <span style={{ fontSize: 14 }}>{over ? '🚨' : warning ? '⚠️' : '✅'}</span>
                   <span style={{ fontSize: 13, fontWeight: 500, color: '#C0C8D8' }}>{cat}</span>
                 </div>
+
                 {editing[cat] ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input
@@ -111,7 +127,7 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
                       value={inputValues[cat] || ''}
                       onChange={e => setInputValues({ ...inputValues, [cat]: e.target.value })}
                       placeholder="Nominal"
-                      style={{ width: 120, background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 8px', fontSize: 12, color: '#C0C8D8', outline: 'none' }}
+                      style={{ width: 110, background: '#0F2040', border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 8px', fontSize: 12, color: '#C0C8D8', outline: 'none' }}
                       onKeyDown={e => e.key === 'Enter' && saveBudget(cat, inputValues[cat])}
                       autoFocus
                     />
@@ -125,14 +141,20 @@ export default function BudgetTracker({ transactions, userId, currency = 'IDR' }
                     }}>✕</button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {budget > 0 && (
-                      <span style={{ fontSize: 12, color: '#3D5A80' }}>{fmt(use)} / {fmt(budget)}</span>
+                      <span style={{ fontSize: 11, color: '#3D5A80' }}>{fmt(use)} / {fmt(budget)}</span>
                     )}
                     <button onClick={() => setEditing({ [cat]: true })} style={{
                       fontSize: 11, color: '#3D5A80', background: '#0F2040',
-                      border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 10px', cursor: 'pointer'
+                      border: '0.5px solid #1A3050', borderRadius: 6, padding: '4px 8px', cursor: 'pointer'
                     }}>{budget > 0 ? 'Edit' : '+ Set'}</button>
+                    {budget > 0 && (
+                      <button onClick={() => deleteBudget(cat)} style={{
+                        fontSize: 11, color: '#F87171', background: '#1A0505',
+                        border: '0.5px solid #4A1515', borderRadius: 6, padding: '4px 8px', cursor: 'pointer'
+                      }}>Hapus</button>
+                    )}
                   </div>
                 )}
               </div>
